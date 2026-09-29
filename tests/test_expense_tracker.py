@@ -31,6 +31,15 @@ class StorageAndReportTests(unittest.TestCase):
                 rows = list(csv.DictReader(handle))
             self.assertEqual(rows, [{"date": "2026-09-22", "category": "Food", "amount": "12.50", "description": "Lunch"}])
 
+    def test_add_refuses_incompatible_header_without_changing_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "expenses.csv"
+            original = "category,amount,date,description\nFood,10.00,2026-09-22,Lunch\n"
+            path.write_text(original, encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "CSV header"):
+                tracker.add_expense(path, "Food", 1250)
+            self.assertEqual(path.read_text(encoding="utf-8"), original)
+
     def test_malformed_rows_are_skipped_and_categories_sorted(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "expenses.csv"
@@ -73,6 +82,16 @@ class CliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("usage:", result.stderr)
         self.assertIn("required", result.stderr)
+
+    def test_cli_refuses_incompatible_file_without_appending(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "expenses.csv"
+            path.write_text("other,column\nold,data\n", encoding="utf-8")
+            original = path.read_bytes()
+            result = self.run_cli("--file", str(path), "add", "--category", "Food", "--amount", "2.50")
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("CSV header", result.stderr)
+            self.assertEqual(path.read_bytes(), original)
 
     def test_add_and_report_end_to_end(self):
         with tempfile.TemporaryDirectory() as directory:

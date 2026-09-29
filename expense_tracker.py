@@ -45,6 +45,12 @@ def add_expense(
 ) -> None:
     """Append one validated expense to *path*."""
     is_new = not path.exists() or path.stat().st_size == 0
+    if not is_new:
+        # Refuse to append under another schema: DictReader would silently lose the new row.
+        with path.open("r", newline="", encoding="utf-8") as existing:
+            reader = csv.reader(existing)
+            if tuple(next(reader, ())) != FIELDNAMES:
+                raise ValueError("CSV header does not match the expense format")
     with path.open("a", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=FIELDNAMES)
         if is_new:
@@ -134,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
             build_parser().error("category cannot be empty")
         try:
             add_expense(args.file, category, args.amount, args.description)
-        except OSError as exc:
+        except (OSError, csv.Error, UnicodeError, ValueError) as exc:
             print(f"error: could not write CSV: {exc}", file=sys.stderr)
             return 1
         print(f"Added expense: {category} - ${format_cents(args.amount)}")

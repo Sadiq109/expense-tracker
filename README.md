@@ -27,7 +27,7 @@ Use a different data file:
 python3 expense_tracker.py --file demo.csv report
 ```
 
-Run `python3 expense_tracker.py --help` or add `--help` after a subcommand for all options. Invalid, negative, non-finite, or over-precise amounts are rejected. During reporting, malformed CSV rows are skipped with warnings so valid records remain usable.
+Run `python3 expense_tracker.py --help` or add `--help` after a subcommand for all options. Invalid, negative, non-finite, or over-precise amounts are rejected. During reporting, malformed CSV rows are skipped with warnings so valid records remain usable. Adding to an existing file with an incompatible header is refused without changing the file.
 
 ## Tests
 
