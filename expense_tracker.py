@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
-import math
+import re
 import sys
 from collections import defaultdict
 from datetime import date
@@ -95,6 +95,27 @@ def read_expenses(path: Path) -> tuple[list[dict[str, str]], list[str]]:
     return valid, warnings
 
 
+def parse_date(value: str) -> date:
+    """Require an ISO calendar date for report bounds."""
+    try:
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+            raise ValueError("invalid date format")
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("date must be YYYY-MM-DD") from exc
+
+
+def filter_dates(
+    rows: Iterable[dict[str, str]], start: date | None, end: date | None
+) -> list[dict[str, str]]:
+    """Return validated expense rows inside the inclusive date window."""
+    return [
+        row for row in rows
+        if (start is None or date.fromisoformat(row["date"]) >= start)
+        and (end is None or date.fromisoformat(row["date"]) <= end)
+    ]
+
+
 def report_lines(rows: Iterable[dict[str, str]]) -> list[str]:
     """Build deterministic report lines from validated rows."""
     totals: defaultdict[str, int] = defaultdict(int)
@@ -128,7 +149,9 @@ def build_parser() -> argparse.ArgumentParser:
     add_parser.add_argument("--amount", required=True, type=parse_amount, help="amount, e.g. 12.50")
     add_parser.add_argument("--description", default="", help="optional description")
 
-    subparsers.add_parser("report", help="show total spending by category")
+    report_parser = subparsers.add_parser("report", help="show total spending by category")
+    report_parser.add_argument("--from-date", type=parse_date, help="first date, inclusive")
+    report_parser.add_argument("--to-date", type=parse_date, help="last date, inclusive")
     return parser
 
 
@@ -146,6 +169,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Added expense: {category} - ${format_cents(args.amount)}")
         return 0
 
+    if args.from_date and args.to_date and args.from_date > args.to_date:
+        build_parser().error("--from-date must be on or before --to-date")
     rows, warnings = read_expenses(args.file)
     for warning in warnings:
         print(f"warning: skipped {warning}", file=sys.stderr)
@@ -155,6 +180,7 @@ def main(argv: list[str] | None = None) -> int:
     if not rows:
         print("No valid expenses found.")
         return 0
+    rows = filter_dates(rows, args.from_date, args.to_date)
     print("\n".join(report_lines(rows)))
     return 0
 

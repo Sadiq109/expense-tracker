@@ -19,6 +19,8 @@ Show the report:
 
 ```bash
 python3 expense_tracker.py report
+# Optional inclusive date window:
+python3 expense_tracker.py report --from-date 2026-09-01 --to-date 2026-09-30
 ```
 
 Use a different data file:

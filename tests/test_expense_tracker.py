@@ -93,6 +93,33 @@ class CliTests(unittest.TestCase):
             self.assertIn("CSV header", result.stderr)
             self.assertEqual(path.read_bytes(), original)
 
+    def test_report_inclusive_date_window_and_empty_window(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "expenses.csv"
+            path.write_text(
+                "date,category,amount,description\n"
+                "2026-09-01,Food,1.00,early\n"
+                "2026-09-02,Food,2.00,lower bound\n"
+                "2026-09-03,Travel,3.00,upper bound\n"
+                "2026-09-04,Food,4.00,late\n",
+                encoding="utf-8",
+            )
+            filtered = self.run_cli("--file", str(path), "report", "--from-date", "2026-09-02", "--to-date", "2026-09-03")
+            self.assertEqual(filtered.returncode, 0, filtered.stderr)
+            self.assertIn("Total spending: $5.00", filtered.stdout)
+            self.assertIn("Food: $2.00", filtered.stdout)
+            self.assertIn("Travel: $3.00", filtered.stdout)
+            empty = self.run_cli("--file", str(path), "report", "--from-date", "2026-10-01")
+            self.assertEqual(empty.returncode, 0, empty.stderr)
+            self.assertIn("Total spending: $0.00", empty.stdout)
+
+    def test_report_rejects_bad_and_reversed_date_bounds(self):
+        for flags in (("--from-date", "2026-02-30"), ("--from-date", "20260904"), ("--from-date", "2026-09-04", "--to-date", "2026-09-03")):
+            with self.subTest(flags=flags):
+                result = self.run_cli("report", *flags)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("date", result.stderr)
+
     def test_add_and_report_end_to_end(self):
         with tempfile.TemporaryDirectory() as directory:
             path = str(Path(directory) / "expenses.csv")
