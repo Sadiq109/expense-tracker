@@ -120,6 +120,43 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 2)
                 self.assertIn("date", result.stderr)
 
+    def test_add_explicit_date_is_saved_and_reportable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "expenses.csv"
+            added = self.run_cli("--file", str(path), "add", "--category", "Food", "--amount", "4.25", "--date", "2024-02-29")
+            self.assertEqual(added.returncode, 0, added.stderr)
+            rows, warnings = tracker.read_expenses(path)
+            self.assertEqual(warnings, [])
+            self.assertEqual(rows[0]["date"], "2024-02-29")
+            report = self.run_cli("--file", str(path), "report", "--from-date", "2024-02-29", "--to-date", "2024-02-29")
+            self.assertEqual(report.returncode, 0, report.stderr)
+            self.assertIn("Total spending: $4.25", report.stdout)
+
+    def test_add_invalid_date_leaves_storage_untouched(self):
+        for value in ("2026-02-29", "20260901", "2026-9-01", "bad-date"):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "expenses.csv"
+                args = ("--file", str(path), "add", "--category", "Food", "--amount", "4.25", "--date", value)
+                result = self.run_cli(*args)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("date must be YYYY-MM-DD", result.stderr)
+                self.assertFalse(path.exists())
+                tracker.add_expense(path, "Travel", 100, expense_date=date(2026, 9, 1))
+                original = path.read_bytes()
+                self.assertEqual(self.run_cli(*args).returncode, 2)
+                self.assertEqual(path.read_bytes(), original)
+
+    def test_add_defaults_to_today(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "expenses.csv"
+            before = date.today().isoformat()
+            added = self.run_cli("--file", str(path), "add", "--category", "Food", "--amount", "1.00")
+            after = date.today().isoformat()
+            self.assertEqual(added.returncode, 0, added.stderr)
+            rows, warnings = tracker.read_expenses(path)
+            self.assertEqual(warnings, [])
+            self.assertIn(rows[0]["date"], (before, after))
+
     def test_add_and_report_end_to_end(self):
         with tempfile.TemporaryDirectory() as directory:
             path = str(Path(directory) / "expenses.csv")

@@ -96,7 +96,7 @@ def read_expenses(path: Path) -> tuple[list[dict[str, str]], list[str]]:
 
 
 def parse_date(value: str) -> date:
-    """Require an ISO calendar date for report bounds."""
+    """Require an ISO calendar date for expense dates and report bounds."""
     try:
         if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
             raise ValueError("invalid date format")
@@ -148,6 +148,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_parser.add_argument("--category", required=True, help="expense category")
     add_parser.add_argument("--amount", required=True, type=parse_amount, help="amount, e.g. 12.50")
     add_parser.add_argument("--description", default="", help="optional description")
+    add_parser.add_argument("--date", type=parse_date, dest="expense_date", help="expense date YYYY-MM-DD (default: today)")
 
     report_parser = subparsers.add_parser("report", help="show total spending by category")
     report_parser.add_argument("--from-date", type=parse_date, help="first date, inclusive")
@@ -162,7 +163,7 @@ def main(argv: list[str] | None = None) -> int:
         if not category:
             build_parser().error("category cannot be empty")
         try:
-            add_expense(args.file, category, args.amount, args.description)
+            add_expense(args.file, category, args.amount, args.description, args.expense_date)
         except (OSError, csv.Error, UnicodeError, ValueError) as exc:
             print(f"error: could not write CSV: {exc}", file=sys.stderr)
             return 1

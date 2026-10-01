@@ -13,6 +13,8 @@ Add an expense:
 
 ```bash
 python3 expense_tracker.py add --category Food --amount 12.50 --description "Lunch"
+# Record an older receipt with its actual date:
+python3 expense_tracker.py add --category Food --amount 4.25 --date 2026-09-15 --description "Coffee"
 ```
 
 Show the report:
@@ -28,6 +30,8 @@ Use a different data file:
 ```bash
 python3 expense_tracker.py --file demo.csv report
 ```
+
+I can use `add --date YYYY-MM-DD` to record a receipt on its actual date; without `--date`, the app uses today. Invalid calendar dates are rejected before the data file is created or changed.
 
 Run `python3 expense_tracker.py --help` or add `--help` after a subcommand for all options. Invalid, negative, non-finite, or over-precise amounts are rejected. During reporting, malformed CSV rows are skipped with warnings so valid records remain usable. Adding to an existing file with an incompatible header is refused without changing the file.
 
