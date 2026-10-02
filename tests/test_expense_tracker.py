@@ -113,6 +113,26 @@ class CliTests(unittest.TestCase):
             self.assertEqual(empty.returncode, 0, empty.stderr)
             self.assertIn("Total spending: $0.00", empty.stdout)
 
+    def test_report_category_filter_ignores_case_and_combines_with_dates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "expenses.csv"
+            path.write_text(
+                "date,category,amount,description\n"
+                "2026-09-01,Food,1.00,early\n"
+                "2026-09-02,food,2.00,in window\n"
+                "2026-09-03,Travel,3.00,other category\n",
+                encoding="utf-8",
+            )
+            result = self.run_cli("--file", str(path), "report", "--category", "FOOD")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("Total spending: $3.00", result.stdout)
+            self.assertNotIn("Travel", result.stdout)
+            windowed = self.run_cli("--file", str(path), "report", "--category", "food", "--from-date", "2026-09-02")
+            self.assertIn("Total spending: $2.00", windowed.stdout)
+            missing = self.run_cli("--file", str(path), "report", "--category", "Rent")
+            self.assertEqual(missing.returncode, 0, missing.stderr)
+            self.assertEqual(missing.stdout.strip(), "Total spending: $0.00")
+
     def test_report_rejects_bad_and_reversed_date_bounds(self):
         for flags in (("--from-date", "2026-02-30"), ("--from-date", "20260904"), ("--from-date", "2026-09-04", "--to-date", "2026-09-03")):
             with self.subTest(flags=flags):

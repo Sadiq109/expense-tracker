@@ -116,6 +116,14 @@ def filter_dates(
     ]
 
 
+def filter_category(rows: Iterable[dict[str, str]], category: str | None) -> list[dict[str, str]]:
+    """Return rows whose category matches *category*, ignoring case."""
+    if category is None:
+        return list(rows)
+    wanted = category.strip().casefold()
+    return [row for row in rows if row["category"].casefold() == wanted]
+
+
 def report_lines(rows: Iterable[dict[str, str]]) -> list[str]:
     """Build deterministic report lines from validated rows."""
     totals: defaultdict[str, int] = defaultdict(int)
@@ -153,6 +161,7 @@ def build_parser() -> argparse.ArgumentParser:
     report_parser = subparsers.add_parser("report", help="show total spending by category")
     report_parser.add_argument("--from-date", type=parse_date, help="first date, inclusive")
     report_parser.add_argument("--to-date", type=parse_date, help="last date, inclusive")
+    report_parser.add_argument("--category", help="only include this category (case-insensitive)")
     return parser
 
 
@@ -181,7 +190,7 @@ def main(argv: list[str] | None = None) -> int:
     if not rows:
         print("No valid expenses found.")
         return 0
-    rows = filter_dates(rows, args.from_date, args.to_date)
+    rows = filter_category(filter_dates(rows, args.from_date, args.to_date), args.category)
     print("\n".join(report_lines(rows)))
     return 0
 

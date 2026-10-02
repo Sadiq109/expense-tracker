@@ -23,6 +23,8 @@ Show the report:
 python3 expense_tracker.py report
 # Optional inclusive date window:
 python3 expense_tracker.py report --from-date 2026-09-01 --to-date 2026-09-30
+# Only one category (case-insensitive), alone or with a date window:
+python3 expense_tracker.py report --category food --from-date 2026-09-01
 ```
 
 Use a different data file:
@@ -32,6 +34,8 @@ python3 expense_tracker.py --file demo.csv report
 ```
 
 I can use `add --date YYYY-MM-DD` to record a receipt on its actual date; without `--date`, the app uses today. Invalid calendar dates are rejected before the data file is created or changed.
+
+`report --category NAME` matches the category ignoring case, so `food` finds `Food`; a category with no matching rows reports a total of $0.00.
 
 Run `python3 expense_tracker.py --help` or add `--help` after a subcommand for all options. Invalid, negative, non-finite, or over-precise amounts are rejected. During reporting, malformed CSV rows are skipped with warnings so valid records remain usable. Adding to an existing file with an incompatible header is refused without changing the file.
 
