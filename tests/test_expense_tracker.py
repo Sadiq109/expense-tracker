@@ -1,5 +1,6 @@
 import argparse
 import csv
+import json
 import subprocess
 import sys
 import tempfile
@@ -132,6 +133,22 @@ class CliTests(unittest.TestCase):
             missing = self.run_cli("--file", str(path), "report", "--category", "Rent")
             self.assertEqual(missing.returncode, 0, missing.stderr)
             self.assertEqual(missing.stdout.strip(), "Total spending: $0.00")
+
+    def test_report_json_uses_exact_strings_and_respects_filters(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "expenses.csv"
+            path.write_text(
+                "date,category,amount,description\n"
+                "2026-09-01,Food,0.10,a\n"
+                "2026-09-02,food,0.20,b\n"
+                "2026-09-03,Travel,3.00,c\n",
+                encoding="utf-8",
+            )
+            result = self.run_cli("--file", str(path), "report", "--json", "--category", "food")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout), {"total": "0.30", "categories": {"Food": "0.10", "food": "0.20"}})
+            empty = self.run_cli("--file", str(path), "report", "--json", "--category", "Rent")
+            self.assertEqual(json.loads(empty.stdout), {"total": "0.00", "categories": {}})
 
     def test_report_rejects_bad_and_reversed_date_bounds(self):
         for flags in (("--from-date", "2026-02-30"), ("--from-date", "20260904"), ("--from-date", "2026-09-04", "--to-date", "2026-09-03")):

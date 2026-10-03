@@ -27,6 +27,12 @@ python3 expense_tracker.py report --from-date 2026-09-01 --to-date 2026-09-30
 python3 expense_tracker.py report --category food --from-date 2026-09-01
 ```
 
+Print the same report as JSON (amounts are exact decimal strings, not floats; all filters apply):
+
+```bash
+python3 expense_tracker.py report --json --category food
+```
+
 Use a different data file:
 
 ```bash

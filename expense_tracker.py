@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import re
 import sys
 from collections import defaultdict
@@ -140,6 +141,17 @@ def report_lines(rows: Iterable[dict[str, str]]) -> list[str]:
     return lines
 
 
+def report_data(rows: Iterable[dict[str, str]]) -> dict[str, object]:
+    """Build the report as plain data with exact decimal strings."""
+    totals: defaultdict[str, int] = defaultdict(int)
+    for row in rows:
+        totals[row["category"]] += parse_amount(row["amount"])
+    return {
+        "total": format_cents(sum(totals.values())),
+        "categories": {c: format_cents(totals[c]) for c in sorted(totals, key=str.casefold)},
+    }
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Record expenses and summarize spending by category."
@@ -162,6 +174,7 @@ def build_parser() -> argparse.ArgumentParser:
     report_parser.add_argument("--from-date", type=parse_date, help="first date, inclusive")
     report_parser.add_argument("--to-date", type=parse_date, help="last date, inclusive")
     report_parser.add_argument("--category", help="only include this category (case-insensitive)")
+    report_parser.add_argument("--json", action="store_true", help="print the report as JSON")
     return parser
 
 
@@ -191,7 +204,10 @@ def main(argv: list[str] | None = None) -> int:
         print("No valid expenses found.")
         return 0
     rows = filter_category(filter_dates(rows, args.from_date, args.to_date), args.category)
-    print("\n".join(report_lines(rows)))
+    if args.json:
+        print(json.dumps(report_data(rows), indent=2))
+    else:
+        print("\n".join(report_lines(rows)))
     return 0
 
 
